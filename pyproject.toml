@@ -7,8 +7,15 @@ authors = [
     { name = "dakixr", email = "dakixr@gmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "openpyxl>=3.1.5",
+]
 
 [build-system]
 requires = ["uv_build>=0.8.11,<0.9.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.406",
+]

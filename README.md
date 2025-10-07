@@ -1,14 +1,14 @@
 # expy — Excel in Python (MVP)
  
-**Goal:** Compose spreadsheets with pure Python—no cell coordinateex. You assemble rows/columns/cells; expy handles layout. Everything is type-hinted, data-only (no formulas), and fully stylable with Tailwind-like utilities or themeex.
+**Goal:** Compose spreadsheets with pure Python—no cell coordinates. You assemble rows/columns/cells; expy handles layout. Everything is type-hinted, data-only (no formulas), and fully stylable with Tailwind-like utilities or themes.
  
 ## Core ideas
  
 * **Positionless composition:** You never place `A1`, `B2`, etc. Components flow in order.
-* **Small primitives:** `row`, `col`, `cell` are the building blockex.
+* **Small primitives:** `row`, `col`, `cell` are the building blocks.
 * **Reusable components:** Start with `table`; more to come.
 * **Styling-first:** Utility styles (Tailwind-ish) + global theme. Every primitive takes `style=[...]`.
-* **Flexible layouts:** Vertical / Horizontal stacking of componentex.
+* **Flexible layouts:** Vertical / Horizontal stacking of components.
  
 ## Primitives
  
