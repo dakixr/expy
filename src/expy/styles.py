@@ -2,7 +2,42 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal, cast
+
+BorderStyleLiteral = Literal[
+    "dashDot",
+    "dashDotDot",
+    "dashed",
+    "dotted",
+    "double",
+    "hair",
+    "medium",
+    "mediumDashDot",
+    "mediumDashDotDot",
+    "mediumDashed",
+    "slantDashDot",
+    "thick",
+    "thin",
+]
+BorderStyleName = BorderStyleLiteral | Literal["none"]
+
+BORDER_STYLE_VALUES: set[str] = {
+    "dashDot",
+    "dashDotDot",
+    "dashed",
+    "dotted",
+    "double",
+    "hair",
+    "medium",
+    "mediumDashDot",
+    "mediumDashDotDot",
+    "mediumDashed",
+    "slantDashDot",
+    "thick",
+    "thin",
+    "none",
+}
+
 
 __all__ = [
     "Style",
@@ -32,6 +67,8 @@ __all__ = [
     "table_bordered",
     "table_banded",
     "table_compact",
+    "BorderStyleName",
+    "BorderStyleLiteral",
 ]
 
 
@@ -60,6 +97,15 @@ DEFAULT_COLORS: dict[str, str] = {
 }
 
 
+def _coerce_border_style(value: str) -> BorderStyleName:
+    normalized = value.strip()
+    if normalized not in BORDER_STYLE_VALUES:
+        options = ", ".join(sorted(BORDER_STYLE_VALUES))
+        msg = f"Unsupported border style '{normalized}'. Expected one of: {options}"
+        raise ValueError(msg)
+    return cast(BorderStyleName, normalized)
+
+
 @dataclass(frozen=True)
 class TableTheme:
     """High-level defaults for tables."""
@@ -69,7 +115,7 @@ class TableTheme:
     header_bg: str | None = normalize_hex("#F2F4F7")
     header_text_color: str | None = normalize_hex("#0F172A")
     border_color: str = normalize_hex("#D0D5DD")
-    border_style: str = "thin"
+    border_style: BorderStyleName = "thin"
     compact_row_height: float | None = 18.0
 
 
@@ -92,7 +138,7 @@ def table_theme(
     header_bg: str | None = None,
     header_text_color: str | None = None,
     border_color: str | None = None,
-    border_style: str | None = None,
+    border_style: BorderStyleName | None = None,
     compact_row_height: float | None = None,
 ) -> TableTheme:
     base = TableTheme()
@@ -104,7 +150,7 @@ def table_theme(
         if header_text_color is not None
         else base.header_text_color,
         border_color=normalize_hex(border_color) if border_color is not None else base.border_color,
-        border_style=border_style if border_style is not None else base.border_style,
+        border_style=_coerce_border_style(border_style) if border_style is not None else base.border_style,
         compact_row_height=compact_row_height if compact_row_height is not None else base.compact_row_height,
     )
 
@@ -152,7 +198,7 @@ class Style:
     indent: int | None = None
     wrap_text: bool | None = None
     number_format: str | None = None
-    border: str | None = None
+    border: BorderStyleName | None = None
     border_color: str | None = None
     table_banded: bool | None = None
     table_bordered: bool | None = None
@@ -182,8 +228,8 @@ class Style:
             indent=other.indent if other.indent is not None else self.indent,
             wrap_text=other.wrap_text if other.wrap_text is not None else self.wrap_text,
             number_format=other.number_format or self.number_format,
-            border=other.border or self.border,
-            border_color=other.border_color or self.border_color,
+            border=other.border if other.border is not None else self.border,
+            border_color=other.border_color if other.border_color is not None else self.border_color,
             table_banded=other.table_banded if other.table_banded is not None else self.table_banded,
             table_bordered=other.table_bordered if other.table_bordered is not None else self.table_bordered,
             table_compact=other.table_compact if other.table_compact is not None else self.table_compact,

@@ -32,7 +32,8 @@ class Workbook:
     def to_openpyxl(self):  # -> openpyxl.workbook.Workbook
         workbook = _OpenpyxlWorkbook()
         default_sheet = workbook.active
-        workbook.remove(default_sheet)
+        if default_sheet is not None:
+            workbook.remove(default_sheet)
         for sheet in self._node.sheets:
             ws = workbook.create_sheet(title=sheet.name)
             render_sheet(ws, sheet, self._node.theme)

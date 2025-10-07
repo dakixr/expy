@@ -8,7 +8,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from .nodes import ColumnNode, RowNode, SheetNode, SpacerNode, TableNode
-from .styles import Style, Theme, bold, combine_styles, normalize_hex, to_argb
+from .styles import BorderStyleName, Style, Theme, bold, combine_styles, normalize_hex, to_argb
 
 __all__ = ["render_sheet"]
 
@@ -26,7 +26,7 @@ class EffectiveStyle:
     indent: int | None
     wrap_text: bool
     number_format: str | None
-    border: str | None
+    border: BorderStyleName | None
     border_color: str | None
 
 
@@ -68,7 +68,7 @@ def _resolve(styles: Sequence[Style], theme: Theme) -> EffectiveStyle:
         indent=merged.indent,
         wrap_text=merged.wrap_text if merged.wrap_text is not None else False,
         number_format=merged.number_format,
-        border=merged.border,
+    border=merged.border,
         border_color=normalize_hex(merged.border_color) if merged.border_color else None,
     )
 
@@ -197,8 +197,12 @@ def _render_table(
     banded = table_style.table_banded if table_style.table_banded is not None else theme.table.banded
     bordered = table_style.table_bordered if table_style.table_bordered is not None else True
     compact = table_style.table_compact if table_style.table_compact is not None else False
-    border_color = table_style.border_color or theme.table.border_color
-    border_style = table_style.border or theme.table.border_style
+    border_color = (
+        table_style.border_color if table_style.border_color is not None else theme.table.border_color
+    )
+    border_style = (
+        table_style.border if table_style.border is not None else theme.table.border_style
+    )
 
     table_border_style = Style(border=border_style, border_color=border_color) if bordered else None
     stripe_style = Style(fill_color=theme.table.stripe_color) if banded and theme.table.stripe_color else None

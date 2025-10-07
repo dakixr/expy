@@ -14,7 +14,7 @@ from .nodes import (
     WorkbookNode,
 )
 from .styles import Style, Theme
-from .workbook import Workbook
+from ._workbook import Workbook
 
 __all__ = [
     "cell",

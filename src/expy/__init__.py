@@ -27,7 +27,7 @@ from .styles import (
     text_xs,
     theme,
 )
-from .workbook import Workbook
+from ._workbook import Workbook
 
 __all__ = [
     "Workbook",
