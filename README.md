@@ -84,6 +84,15 @@ Mix and match utilities freely—what you see is what you get.
 - `hstack(a, b, gap=1)` arranges components side by side with configurable column gaps.
 - `space(rows=1, height=None)` inserts empty rows (optionally with a fixed height).
 
+## Examples
+
+- **Multi-sheet sales demo**: see `examples/multi_sheet_sales_demo.py`.
+  - Run it to generate a showcase workbook:
+```bash
+python examples/multi_sheet_sales_demo.py
+```
+  - Output: `multi-sheet-sales-demo-output.xlsx` with sheets `Summary`, `Raw Data`, `Pipeline`, and `Glossary`, demonstrating tables, stacks, spacing, and utility styles.
+
 ## Types & ergonomics
 
 - Modern Python with full type hints.
