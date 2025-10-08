@@ -1,0 +1,39 @@
+name: Publish to PyPI
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-publish:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for PyPI Trusted Publishing (OIDC)
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Build sdist and wheel with uv
+        run: |
+          uv build --sdist --wheel
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # For API token-based publishing instead of Trusted Publishing, uncomment below and
+        # set a repository secret named PYPI_API_TOKEN with your token from PyPI.
+        # with:
+        #   password: ${{ secrets.PYPI_API_TOKEN }}
+
+
