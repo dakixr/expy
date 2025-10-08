@@ -11,8 +11,8 @@ from .nodes import (
     CellNode,
     ColumnNode,
     HorizontalStackNode,
-    RowNode,
     RenderableItem,
+    RowNode,
     SheetComponent,
     SheetNode,
     SpacerNode,
@@ -266,17 +266,13 @@ def _render_table(
         else DEFAULT_BORDER_COLOR
     )
     border_style = (
-        table_style.border
-        if table_style.border is not None
-        else DEFAULT_BORDER_STYLE
+        table_style.border if table_style.border is not None else DEFAULT_BORDER_STYLE
     )
 
     table_border_style = (
         Style(border=border_style, border_color=border_color) if bordered else None
     )
-    stripe_style = (
-        Style(fill_color=DEFAULT_TABLE_STRIPE_COLOR) if banded else None
-    )
+    stripe_style = Style(fill_color=DEFAULT_TABLE_STRIPE_COLOR) if banded else None
     compact_height = DEFAULT_TABLE_COMPACT_HEIGHT if compact else None
 
     current_row = start_row
@@ -406,15 +402,25 @@ def render_sheet(ws, node: SheetNode) -> None:
     for placement in placements:
         target = placement.item
         if isinstance(target, CellNode):
-            _render_cell(ws, target, placement.row, placement.col, col_widths, row_heights)
+            _render_cell(
+                ws, target, placement.row, placement.col, col_widths, row_heights
+            )
         elif isinstance(target, RowNode):
-            _render_row(ws, target, placement.row, placement.col, col_widths, row_heights)
+            _render_row(
+                ws, target, placement.row, placement.col, col_widths, row_heights
+            )
         elif isinstance(target, ColumnNode):
-            _render_column(ws, target, placement.row, placement.col, col_widths, row_heights)
+            _render_column(
+                ws, target, placement.row, placement.col, col_widths, row_heights
+            )
         elif isinstance(target, TableNode):
-            _render_table(ws, target, placement.row, placement.col, col_widths, row_heights)
+            _render_table(
+                ws, target, placement.row, placement.col, col_widths, row_heights
+            )
         elif isinstance(target, SpacerNode):
-            height = target.height if target.height is not None else _default_row_height()
+            height = (
+                target.height if target.height is not None else _default_row_height()
+            )
             for offset in range(target.rows):
                 row_index = placement.row + offset
                 row_heights[row_index] = max(row_heights.get(row_index, 0.0), height)

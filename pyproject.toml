@@ -1,5 +1,5 @@
 [project]
-name = "expy"
+name = "xpyxl"
 version = "0.1.0"
 description = "Create styled excel reports with declarative python."
 readme = "README.md"

@@ -1,6 +1,6 @@
-# expy — Excel in Python
+# xpyxl — Excel in Python
 
-Compose polished spreadsheets with pure Python—no manual coordinates. You assemble rows/columns/cells; expy handles layout, rendering, and styling with utility-style classes.
+Compose polished spreadsheets with pure Python—no manual coordinates. You assemble rows/columns/cells; xpyxl handles layout, rendering, and styling with utility-style classes.
 
 ## Core ideas
 
@@ -11,16 +11,16 @@ Compose polished spreadsheets with pure Python—no manual coordinates. You asse
 ## Getting started
 
 ```python
-import expy as ex
+import xpyxl as x
 
 report = (
-    ex.workbook("Sales")[
-        ex.sheet("Summary")[
-            ex.row(style=[ex.text_2xl, ex.bold, ex.text_blue])["Q3 Sales Overview"],
-            ex.row(style=[ex.text_sm, ex.text_gray])["Region", "Units", "Price"],
-            ex.row(style=[ex.bg_primary, ex.text_white, ex.bold])["EMEA", 1200, 19.0],
-            ex.row()["APAC", 900, 21.0],
-            ex.row()["AMER", 1500, 18.5],
+    x.workbook("Sales")[
+        x.sheet("Summary")[
+            x.row(style=[x.text_2xl, x.bold, x.text_blue])["Q3 Sales Overview"],
+            x.row(style=[x.text_sm, x.text_gray])["Region", "Units", "Price"],
+            x.row(style=[x.bg_primary, x.text_white, x.bold])["EMEA", 1200, 19.0],
+            x.row()["APAC", 900, 21.0],
+            x.row()["AMER", 1500, 18.5],
         ]
     ]
 )
@@ -31,9 +31,9 @@ report.save("report.xlsx")
 ## Primitives
 
 ```python
-ex.row(style=[ex.bold, ex.bg_warning])[1, 2, 3, 4, 5]
-ex.col(style=[ex.italic])["a", "b", "c"]
-ex.cell(style=[ex.text_green, ex.number_precision])[42100]
+x.row(style=[x.bold, x.bg_warning])[1, 2, 3, 4, 5]
+x.col(style=[x.italic])["a", "b", "c"]
+x.cell(style=[x.text_green, x.number_precision])[42100]
 ```
 
 - `row[...]` accepts any sequence (numbers, strings, dataclasses…)
@@ -43,25 +43,25 @@ ex.cell(style=[ex.text_green, ex.number_precision])[42100]
 
 ## Component: `table`
 
-`ex.table(...)` renders a header + body with optional style overrides. Combine with `vstack`/`hstack` for dashboards and reports.
+`x.table(...)` renders a header + body with optional style overrides. Combine with `vstack`/`hstack` for dashboards and reports.
 
 ```python
-sales_table = ex.table(
+sales_table = x.table(
     header=["Region", "Units", "Price"],
-    header_style=[ex.text_sm, ex.text_gray, ex.align_middle],
-    style=[ex.table_bordered, ex.table_compact],
+    header_style=[x.text_sm, x.text_gray, x.align_middle],
+    style=[x.table_bordered, x.table_compact],
 )[
     ["EMEA", 1200, 19.0],
     ["APAC", 900, 21.0],
     ["AMER", 1500, 18.5],
 ]
 
-layout = ex.vstack(
-    ex.row(style=[ex.text_xl, ex.bold])["Q3 Sales Overview"],
-    ex.space(),
-    ex.hstack(
+layout = x.vstack(
+    x.row(style=[x.text_xl, x.bold])["Q3 Sales Overview"],
+    x.space(),
+    x.hstack(
         sales_table,
-        ex.cell(style=[ex.text_sm, ex.text_gray])["Generated with expy"],
+        x.cell(style=[x.text_sm, x.text_gray])["Generated with xpyxl"],
         gap=2,
     ),
 )

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from expy.nodes import SheetNode
+from xpyxl.nodes import SheetNode
 
 from ._workbook import Workbook
 from .builders import (
