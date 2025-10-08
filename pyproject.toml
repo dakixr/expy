@@ -1,6 +1,6 @@
 [project]
 name = "xpyxl"
-version = "0.1.0"
+version = "0.1.1"
 description = "Create styled excel reports with declarative python."
 readme = "README.md"
 authors = [

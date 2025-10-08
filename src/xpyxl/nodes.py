@@ -88,5 +88,4 @@ class SheetNode:
 
 @dataclass(frozen=True)
 class WorkbookNode:
-    name: str
     sheets: tuple[SheetNode, ...]

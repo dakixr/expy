@@ -16,15 +16,11 @@ class Workbook:
     def __init__(self, node: WorkbookNode) -> None:
         self._node = node
 
-    @property
-    def name(self) -> str:
-        return self._node.name
-
     def save(self, path: str | Path) -> None:
         workbook = self.to_openpyxl()
         workbook.save(str(Path(path)))
 
-    def to_openpyxl(self):  # -> openpyxl.workbook.Workbook
+    def to_openpyxl(self) -> _OpenpyxlWorkbook:
         workbook = _OpenpyxlWorkbook()
         default_sheet = workbook.active
         if default_sheet is not None:

@@ -339,7 +339,7 @@ def glossary_sheet() -> x.SheetNode:
 def build_sample_workbook() -> x.Workbook:
     summary_sheet = x.sheet("Summary")[summary_section()]
 
-    workbook = x.workbook("Sales Demo")[
+    workbook = x.workbook()[
         summary_sheet,
         raw_data_sheet(),
         pipeline_sheet(),
@@ -350,7 +350,7 @@ def build_sample_workbook() -> x.Workbook:
 
 
 def main() -> None:
-    output_path = Path("multi-sheet-sales-demo-output.xsx")
+    output_path = Path("multi-sheet-sales-demo-output.xlsx")
     workbook = build_sample_workbook()
     workbook.save(output_path)
     print(f"Saved workbook to {output_path.resolve()}")

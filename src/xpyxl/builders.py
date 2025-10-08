@@ -141,9 +141,6 @@ class SheetBuilder:
 
 
 class WorkbookBuilder:
-    def __init__(self, name: str) -> None:
-        self._name = name
-
     def __getitem__(self, sheets: Any) -> Workbook:
         sheet_nodes: list[SheetNode] = []
         for item in _as_tuple(sheets):
@@ -153,7 +150,7 @@ class WorkbookBuilder:
                 raise TypeError(
                     "Workbooks accept sheet builders that have been indexed"
                 )
-        node = WorkbookNode(name=self._name, sheets=tuple(sheet_nodes))
+        node = WorkbookNode(sheets=tuple(sheet_nodes))
         return Workbook(node)
 
 
@@ -207,5 +204,5 @@ def hstack(*items: Any, gap: int = 0) -> HorizontalStackNode:
     return HorizontalStackNode(items=components, gap=gap)
 
 
-def workbook(name: str) -> WorkbookBuilder:
-    return WorkbookBuilder(name)
+def workbook() -> WorkbookBuilder:
+    return WorkbookBuilder()
