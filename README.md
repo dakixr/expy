@@ -8,6 +8,13 @@ Compose polished spreadsheets with pure Python—no manual coordinates. You asse
 - **Composable styling:** Tailwind-inspired utilities (typography, colors, alignment, number formats) applied via `style=[...]`.
 - **Deterministic rendering:** Pure-data trees compiled into `.xlsx` files with predictable output—ideal for tests and CI diffing.
 
+## Installation
+
+```bash
+uv add xpyxl
+pip install xpyxl
+```
+
 ## Getting started
 
 ```python
