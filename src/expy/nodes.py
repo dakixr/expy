@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from .styles import Style, Theme
+from .styles import Style
 
 __all__ = [
     "CellNode",
@@ -11,9 +11,12 @@ __all__ = [
     "ColumnNode",
     "TableNode",
     "SpacerNode",
+    "VerticalStackNode",
+    "HorizontalStackNode",
     "SheetNode",
     "WorkbookNode",
     "SheetItem",
+    "RenderableItem",
 ]
 
 
@@ -48,7 +51,33 @@ class SpacerNode:
     height: float | None = None
 
 
-SheetItem = RowNode | ColumnNode | TableNode | SpacerNode
+@dataclass(frozen=True)
+class VerticalStackNode:
+    items: tuple["SheetComponent", ...]
+    gap: int = 0
+
+
+@dataclass(frozen=True)
+class HorizontalStackNode:
+    items: tuple["SheetComponent", ...]
+    gap: int = 0
+
+
+SheetComponent = (
+    CellNode
+    | RowNode
+    | ColumnNode
+    | TableNode
+    | SpacerNode
+    | VerticalStackNode
+    | HorizontalStackNode
+)
+
+
+RenderableItem = CellNode | RowNode | ColumnNode | TableNode | SpacerNode
+
+
+SheetItem = SheetComponent
 
 
 @dataclass(frozen=True)
@@ -61,4 +90,3 @@ class SheetNode:
 class WorkbookNode:
     name: str
     sheets: tuple[SheetNode, ...]
-    theme: Theme

@@ -2,15 +2,46 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, assert_never
 
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
-from .nodes import ColumnNode, RowNode, SheetNode, SpacerNode, TableNode
-from .styles import BorderStyleName, Style, Theme, bold, combine_styles, normalize_hex, to_argb
+from .nodes import (
+    CellNode,
+    ColumnNode,
+    HorizontalStackNode,
+    RowNode,
+    RenderableItem,
+    SheetComponent,
+    SheetNode,
+    SpacerNode,
+    TableNode,
+    VerticalStackNode,
+)
+from .styles import (
+    BorderStyleName,
+    Style,
+    bold,
+    combine_styles,
+    normalize_hex,
+    to_argb,
+)
 
 __all__ = ["render_sheet"]
+
+
+DEFAULT_FONT_NAME = "Calibri"
+DEFAULT_FONT_SIZE = 11.0
+DEFAULT_MONO_FONT = "Consolas"
+DEFAULT_TEXT_COLOR = normalize_hex("#111827")
+DEFAULT_BORDER_COLOR = normalize_hex("#D0D5DD")
+DEFAULT_BORDER_STYLE: BorderStyleName = "thin"
+DEFAULT_ROW_HEIGHT = 16.0
+DEFAULT_TABLE_HEADER_BG = normalize_hex("#F2F4F7")
+DEFAULT_TABLE_HEADER_TEXT = normalize_hex("#1E293B")
+DEFAULT_TABLE_STRIPE_COLOR = normalize_hex("#F8FAFC")
+DEFAULT_TABLE_COMPACT_HEIGHT = 18.0
 
 
 @dataclass
@@ -30,31 +61,40 @@ class EffectiveStyle:
     border_color: str | None
 
 
-def _resolve(styles: Sequence[Style], theme: Theme) -> EffectiveStyle:
-    base_style = Style(font_name=theme.font, font_size=theme.base_size, text_color=theme.default_text_color)
+@dataclass(frozen=True)
+class _Size:
+    width: int
+    height: int
+
+
+@dataclass(frozen=True)
+class _Placement:
+    row: int
+    col: int
+    item: RenderableItem
+
+
+def _resolve(styles: Sequence[Style]) -> EffectiveStyle:
+    base_style = Style(
+        font_name=DEFAULT_FONT_NAME,
+        font_size=DEFAULT_FONT_SIZE,
+        text_color=DEFAULT_TEXT_COLOR,
+    )
     merged = combine_styles(styles, base=base_style)
 
-    font_name = merged.font_name or theme.font
+    font_name = merged.font_name or DEFAULT_FONT_NAME
     if merged.mono:
-        font_name = theme.mono_font or font_name
-    font_size = merged.font_size if merged.font_size is not None else theme.base_size
+        font_name = DEFAULT_MONO_FONT
+    font_size = merged.font_size if merged.font_size is not None else DEFAULT_FONT_SIZE
     if merged.font_size_delta is not None:
         font_size += merged.font_size_delta
 
     bold_flag = merged.bold if merged.bold is not None else False
     italic_flag = merged.italic if merged.italic is not None else False
 
-    text_color = merged.text_color
-    if merged.text_color_key:
-        text_color = theme.colors.get(merged.text_color_key, text_color)
-    if text_color is None:
-        text_color = theme.default_text_color
-    text_color = normalize_hex(text_color)
-
-    fill_color = merged.fill_color
-    if merged.fill_color_key:
-        fill_color = theme.colors.get(merged.fill_color_key, fill_color)
-    fill_color_value = normalize_hex(fill_color) if fill_color else None
+    text_color = normalize_hex(merged.text_color or DEFAULT_TEXT_COLOR)
+    fill_color = normalize_hex(merged.fill_color) if merged.fill_color else None
+    border_color = normalize_hex(merged.border_color) if merged.border_color else None
 
     return EffectiveStyle(
         font_name=font_name,
@@ -62,19 +102,19 @@ def _resolve(styles: Sequence[Style], theme: Theme) -> EffectiveStyle:
         bold=bold_flag,
         italic=italic_flag,
         text_color=text_color,
-        fill_color=fill_color_value,
+        fill_color=fill_color,
         horizontal_align=merged.horizontal_align,
         vertical_align=merged.vertical_align,
         indent=merged.indent,
         wrap_text=merged.wrap_text if merged.wrap_text is not None else False,
         number_format=merged.number_format,
-    border=merged.border,
-        border_color=normalize_hex(merged.border_color) if merged.border_color else None,
+        border=merged.border,
+        border_color=border_color,
     )
 
 
-def _default_row_height(theme: Theme) -> float:
-    return max(theme.base_size * 1.4, 14.0)
+def _default_row_height() -> float:
+    return DEFAULT_ROW_HEIGHT
 
 
 def _update_dimensions(
@@ -85,7 +125,6 @@ def _update_dimensions(
     row_index: int,
     value: Any,
     style: EffectiveStyle,
-    theme: Theme,
     prefer_height: float | None = None,
 ) -> None:
     text = "" if value is None else str(value)
@@ -93,7 +132,7 @@ def _update_dimensions(
     existing_width = col_widths.get(column_index, 0.0)
     col_widths[column_index] = max(existing_width, width_hint)
 
-    base_height = prefer_height if prefer_height is not None else _default_row_height(theme)
+    base_height = prefer_height if prefer_height is not None else _default_row_height()
     row_heights[row_index] = max(row_heights.get(row_index, 0.0), base_height)
 
 
@@ -137,24 +176,25 @@ def _apply_style(cell, effective: EffectiveStyle, border_fallback_color: str) ->
 def _render_row(
     ws,
     node: RowNode,
-    row_index: int,
-    theme: Theme,
+    start_row: int,
+    start_col: int,
     col_widths: dict[int, float],
     row_heights: dict[int, float],
 ) -> None:
+    row_index = start_row
     for column_offset, cell_node in enumerate(node.cells, start=1):
         styles = (*node.styles, *cell_node.styles)
-        effective = _resolve(styles, theme)
-        target_cell = ws.cell(row=row_index, column=column_offset, value=cell_node.value)
-        _apply_style(target_cell, effective, theme.table.border_color)
+        effective = _resolve(styles)
+        column_index = start_col + column_offset - 1
+        target_cell = ws.cell(row=row_index, column=column_index, value=cell_node.value)
+        _apply_style(target_cell, effective, DEFAULT_BORDER_COLOR)
         _update_dimensions(
             col_widths=col_widths,
             row_heights=row_heights,
-            column_index=column_offset,
+            column_index=column_index,
             row_index=row_index,
             value=cell_node.value,
             style=effective,
-            theme=theme,
         )
 
 
@@ -162,51 +202,82 @@ def _render_column(
     ws,
     node: ColumnNode,
     start_row: int,
-    theme: Theme,
+    start_col: int,
     col_widths: dict[int, float],
     row_heights: dict[int, float],
-) -> int:
+) -> None:
     row_index = start_row
     for cell_node in node.cells:
         styles = (*node.styles, *cell_node.styles)
-        effective = _resolve(styles, theme)
-        target_cell = ws.cell(row=row_index, column=1, value=cell_node.value)
-        _apply_style(target_cell, effective, theme.table.border_color)
+        effective = _resolve(styles)
+        target_cell = ws.cell(row=row_index, column=start_col, value=cell_node.value)
+        _apply_style(target_cell, effective, DEFAULT_BORDER_COLOR)
         _update_dimensions(
             col_widths=col_widths,
             row_heights=row_heights,
-            column_index=1,
+            column_index=start_col,
             row_index=row_index,
             value=cell_node.value,
             style=effective,
-            theme=theme,
         )
         row_index += 1
-    return row_index
+
+
+def _render_cell(
+    ws,
+    node: CellNode,
+    row_index: int,
+    column_index: int,
+    col_widths: dict[int, float],
+    row_heights: dict[int, float],
+) -> None:
+    effective = _resolve(node.styles)
+    target_cell = ws.cell(row=row_index, column=column_index, value=node.value)
+    _apply_style(target_cell, effective, DEFAULT_BORDER_COLOR)
+    _update_dimensions(
+        col_widths=col_widths,
+        row_heights=row_heights,
+        column_index=column_index,
+        row_index=row_index,
+        value=node.value,
+        style=effective,
+    )
 
 
 def _render_table(
     ws,
     node: TableNode,
     start_row: int,
-    theme: Theme,
+    start_col: int,
     col_widths: dict[int, float],
     row_heights: dict[int, float],
-) -> int:
+) -> None:
     table_style = combine_styles(node.styles)
-    banded = table_style.table_banded if table_style.table_banded is not None else theme.table.banded
-    bordered = table_style.table_bordered if table_style.table_bordered is not None else True
-    compact = table_style.table_compact if table_style.table_compact is not None else False
+    banded = table_style.table_banded if table_style.table_banded is not None else True
+    bordered = (
+        table_style.table_bordered if table_style.table_bordered is not None else True
+    )
+    compact = (
+        table_style.table_compact if table_style.table_compact is not None else False
+    )
     border_color = (
-        table_style.border_color if table_style.border_color is not None else theme.table.border_color
+        table_style.border_color
+        if table_style.border_color is not None
+        else DEFAULT_BORDER_COLOR
     )
     border_style = (
-        table_style.border if table_style.border is not None else theme.table.border_style
+        table_style.border
+        if table_style.border is not None
+        else DEFAULT_BORDER_STYLE
     )
 
-    table_border_style = Style(border=border_style, border_color=border_color) if bordered else None
-    stripe_style = Style(fill_color=theme.table.stripe_color) if banded and theme.table.stripe_color else None
-    compact_height = theme.table.compact_row_height if compact else None
+    table_border_style = (
+        Style(border=border_style, border_color=border_color) if bordered else None
+    )
+    stripe_style = (
+        Style(fill_color=DEFAULT_TABLE_STRIPE_COLOR) if banded else None
+    )
+    compact_height = DEFAULT_TABLE_COMPACT_HEIGHT if compact else None
 
     current_row = start_row
 
@@ -220,26 +291,26 @@ def _render_table(
             style_chain = (*node.styles, *row_node.styles, *extra, *cell_node.styles)
             if table_border_style:
                 style_chain = (*style_chain, table_border_style)
-            effective = _resolve(style_chain, theme)
-            target_cell = ws.cell(row=current_row, column=column_offset, value=cell_node.value)
+            effective = _resolve(style_chain)
+            column_index = start_col + column_offset - 1
+            target_cell = ws.cell(
+                row=current_row, column=column_index, value=cell_node.value
+            )
             _apply_style(target_cell, effective, border_color)
             _update_dimensions(
                 col_widths=col_widths,
                 row_heights=row_heights,
-                column_index=column_offset,
+                column_index=column_index,
                 row_index=current_row,
                 value=cell_node.value,
                 style=effective,
-                theme=theme,
                 prefer_height=prefer_height,
             )
 
     if node.header:
         header_extras: list[Style] = [bold]
-        if theme.table.header_bg:
-            header_extras.append(Style(fill_color=theme.table.header_bg))
-        if theme.table.header_text_color:
-            header_extras.append(Style(text_color=theme.table.header_text_color))
+        header_extras.append(Style(fill_color=DEFAULT_TABLE_HEADER_BG))
+        header_extras.append(Style(text_color=DEFAULT_TABLE_HEADER_TEXT))
         render(node.header, extra=header_extras, prefer_height=compact_height)
         current_row += 1
 
@@ -250,10 +321,70 @@ def _render_table(
         render(row_node, extra=extras, prefer_height=compact_height)
         current_row += 1
 
-    return current_row
+
+def _table_size(node: TableNode) -> _Size:
+    width = 0
+    height = 0
+    if node.header:
+        width = max(width, len(node.header.cells))
+        height += 1
+    for row in node.rows:
+        width = max(width, len(row.cells))
+        height += 1
+    return _Size(width=width, height=height)
 
 
-def _apply_dimensions(ws, col_widths: Mapping[int, float], row_heights: Mapping[int, float]) -> None:
+def _layout_item(
+    item: SheetComponent, start_row: int, start_col: int
+) -> tuple[list[_Placement], _Size]:
+    if isinstance(item, CellNode):
+        size = _Size(width=1, height=1)
+        return ([_Placement(row=start_row, col=start_col, item=item)], size)
+    elif isinstance(item, RowNode):
+        size = _Size(width=len(item.cells), height=1)
+        return ([_Placement(row=start_row, col=start_col, item=item)], size)
+    elif isinstance(item, ColumnNode):
+        size = _Size(width=1, height=len(item.cells))
+        return ([_Placement(row=start_row, col=start_col, item=item)], size)
+    elif isinstance(item, TableNode):
+        size = _table_size(item)
+        return ([_Placement(row=start_row, col=start_col, item=item)], size)
+    elif isinstance(item, SpacerNode):
+        size = _Size(width=0, height=item.rows)
+        return ([_Placement(row=start_row, col=start_col, item=item)], size)
+    elif isinstance(item, VerticalStackNode):
+        placements: list[_Placement] = []  # pyright: ignore[reportRedeclaration]
+        row_cursor = start_row
+        max_width = 0
+        for idx, child in enumerate(item.items):
+            child_placements, child_size = _layout_item(child, row_cursor, start_col)
+            placements.extend(child_placements)
+            row_cursor += child_size.height
+            if idx < len(item.items) - 1:
+                row_cursor += item.gap
+            max_width = max(max_width, child_size.width)
+        height = row_cursor - start_row
+        return placements, _Size(width=max_width, height=height)
+    elif isinstance(item, HorizontalStackNode):
+        placements: list[_Placement] = []
+        col_cursor = start_col
+        max_height = 0
+        for idx, child in enumerate(item.items):
+            child_placements, child_size = _layout_item(child, start_row, col_cursor)
+            placements.extend(child_placements)
+            col_cursor += child_size.width
+            if idx < len(item.items) - 1:
+                col_cursor += item.gap
+            max_height = max(max_height, child_size.height)
+        width = col_cursor - start_col
+        return placements, _Size(width=width, height=max_height)
+    else:
+        assert_never(item)
+
+
+def _apply_dimensions(
+    ws, col_widths: Mapping[int, float], row_heights: Mapping[int, float]
+) -> None:
     for column_index, width in col_widths.items():
         letter = get_column_letter(column_index)
         ws.column_dimensions[letter].width = max(width, 8.0)
@@ -261,26 +392,33 @@ def _apply_dimensions(ws, col_widths: Mapping[int, float], row_heights: Mapping[
         ws.row_dimensions[row_index].height = height
 
 
-def render_sheet(ws, node: SheetNode, theme: Theme) -> None:
+def render_sheet(ws, node: SheetNode) -> None:
     col_widths: dict[int, float] = {}
     row_heights: dict[int, float] = {}
+    placements: list[_Placement] = []
     row_cursor = 1
 
     for item in node.items:
-        if isinstance(item, RowNode):
-            _render_row(ws, item, row_cursor, theme, col_widths, row_heights)
-            row_cursor += 1
-        elif isinstance(item, ColumnNode):
-            row_cursor = _render_column(ws, item, row_cursor, theme, col_widths, row_heights)
-        elif isinstance(item, TableNode):
-            row_cursor = _render_table(ws, item, row_cursor, theme, col_widths, row_heights)
-        elif isinstance(item, SpacerNode):
-            for _ in range(item.rows):
-                height = item.height if item.height is not None else _default_row_height(theme)
-                row_heights[row_cursor] = max(row_heights.get(row_cursor, 0.0), height)
-                row_cursor += 1
-        else:  # pragma: no cover - defensive programming
-            msg = f"Unsupported sheet item: {type(item)!r}"
-            raise TypeError(msg)
+        item_placements, size = _layout_item(item, row_cursor, 1)
+        placements.extend(item_placements)
+        row_cursor += size.height
+
+    for placement in placements:
+        target = placement.item
+        if isinstance(target, CellNode):
+            _render_cell(ws, target, placement.row, placement.col, col_widths, row_heights)
+        elif isinstance(target, RowNode):
+            _render_row(ws, target, placement.row, placement.col, col_widths, row_heights)
+        elif isinstance(target, ColumnNode):
+            _render_column(ws, target, placement.row, placement.col, col_widths, row_heights)
+        elif isinstance(target, TableNode):
+            _render_table(ws, target, placement.row, placement.col, col_widths, row_heights)
+        elif isinstance(target, SpacerNode):
+            height = target.height if target.height is not None else _default_row_height()
+            for offset in range(target.rows):
+                row_index = placement.row + offset
+                row_heights[row_index] = max(row_heights.get(row_index, 0.0), height)
+        else:
+            assert_never(target)
 
     _apply_dimensions(ws, col_widths, row_heights)

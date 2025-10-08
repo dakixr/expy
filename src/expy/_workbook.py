@@ -6,7 +6,6 @@ from openpyxl import Workbook as _OpenpyxlWorkbook
 
 from .nodes import WorkbookNode
 from .render import render_sheet
-from .styles import Theme
 
 __all__ = ["Workbook"]
 
@@ -21,10 +20,6 @@ class Workbook:
     def name(self) -> str:
         return self._node.name
 
-    @property
-    def theme(self) -> Theme:
-        return self._node.theme
-
     def save(self, path: str | Path) -> None:
         workbook = self.to_openpyxl()
         workbook.save(str(Path(path)))
@@ -36,5 +31,5 @@ class Workbook:
             workbook.remove(default_sheet)
         for sheet in self._node.sheets:
             ws = workbook.create_sheet(title=sheet.name)
-            render_sheet(ws, sheet, self._node.theme)
+            render_sheet(ws, sheet)
         return workbook

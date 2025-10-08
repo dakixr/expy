@@ -3,28 +3,44 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
+from ._workbook import Workbook
 from .nodes import (
     CellNode,
     ColumnNode,
+    HorizontalStackNode,
     RowNode,
+    SheetComponent,
     SheetItem,
     SheetNode,
     SpacerNode,
     TableNode,
+    VerticalStackNode,
     WorkbookNode,
 )
-from .styles import Style, Theme
-from ._workbook import Workbook
+from .styles import Style
 
 __all__ = [
     "cell",
     "col",
     "row",
     "space",
+    "vstack",
+    "hstack",
     "sheet",
     "table",
     "workbook",
 ]
+
+
+Node = (
+    CellNode
+    | RowNode
+    | ColumnNode
+    | TableNode
+    | SpacerNode
+    | VerticalStackNode
+    | HorizontalStackNode
+)
 
 
 def _as_tuple(values: Any) -> tuple[Any, ...]:
@@ -44,6 +60,13 @@ def _ensure_cell(value: Any) -> CellNode:
         msg = "Cannot nest row/column/table directly inside a cell"
         raise TypeError(msg)
     return CellNode(value=value)
+
+
+def _ensure_component(value: Any) -> SheetComponent:
+    if isinstance(value, Node):
+        return value
+    msg = "Layouts accept composed nodes. Call the primitive builder before nesting."
+    raise TypeError(msg)
 
 
 def _coerce_row(value: Any, extra_styles: Sequence[Style] = ()) -> RowNode:
@@ -66,13 +89,13 @@ class CellBuilder(_BuilderBase):
 
 
 class RowBuilder(_BuilderBase):
-    def __getitem__(self, values: Any) -> RowNode:
+    def __getitem__(self, values: Sequence[Any]) -> RowNode:
         cells = tuple(_ensure_cell(item) for item in _as_tuple(values))
         return RowNode(cells=cells, styles=self._styles)
 
 
 class ColumnBuilder(_BuilderBase):
-    def __getitem__(self, values: Any) -> ColumnNode:
+    def __getitem__(self, values: Sequence[Any]) -> ColumnNode:
         cells = tuple(_ensure_cell(item) for item in _as_tuple(values))
         return ColumnNode(cells=cells, styles=self._styles)
 
@@ -89,11 +112,13 @@ class TableBuilder(_BuilderBase):
         self._header_raw = header
         self._header_styles: tuple[Style, ...] = tuple(header_style or ())
 
-    def __getitem__(self, rows: Any) -> TableNode:
+    def __getitem__(self, rows: Sequence[RowNode] | Sequence[list]) -> TableNode:
         row_nodes = tuple(_coerce_row(row) for row in _as_tuple(rows))
         header_node = None
         if self._header_raw is not None:
-            header_node = _coerce_row(self._header_raw, extra_styles=self._header_styles)
+            header_node = _coerce_row(
+                self._header_raw, extra_styles=self._header_styles
+            )
         return TableNode(rows=row_nodes, styles=self._styles, header=header_node)
 
 
@@ -104,11 +129,11 @@ class SheetBuilder:
     def __getitem__(self, items: Any) -> SheetNode:
         entries: list[SheetItem] = []
         for item in _as_tuple(items):
-            if isinstance(item, (RowNode, ColumnNode, TableNode, SpacerNode)):
+            if isinstance(item, Node):
                 entries.append(item)
             else:
                 msg = (
-                    "Sheets accept rows, columns, tables, or spacers. "
+                    "Sheets accept rows, columns, tables, spacers, or layout stacks. "
                     "Call the builder before nesting."
                 )
                 raise TypeError(msg)
@@ -116,9 +141,8 @@ class SheetBuilder:
 
 
 class WorkbookBuilder:
-    def __init__(self, name: str, *, theme: Theme | None = None) -> None:
+    def __init__(self, name: str) -> None:
         self._name = name
-        self._theme = theme or Theme()
 
     def __getitem__(self, sheets: Any) -> Workbook:
         sheet_nodes: list[SheetNode] = []
@@ -126,8 +150,10 @@ class WorkbookBuilder:
             if isinstance(item, SheetNode):
                 sheet_nodes.append(item)
             else:
-                raise TypeError("Workbooks accept sheet builders that have been indexed")
-        node = WorkbookNode(name=self._name, sheets=tuple(sheet_nodes), theme=self._theme)
+                raise TypeError(
+                    "Workbooks accept sheet builders that have been indexed"
+                )
+        node = WorkbookNode(name=self._name, sheets=tuple(sheet_nodes))
         return Workbook(node)
 
 
@@ -163,5 +189,23 @@ def space(rows: int = 1, *, height: float | None = None) -> SpacerNode:
     return SpacerNode(rows=rows, height=height)
 
 
-def workbook(name: str, *, theme: Theme | None = None) -> WorkbookBuilder:
-    return WorkbookBuilder(name, theme=theme)
+def vstack(*items: Any, gap: int = 0) -> VerticalStackNode:
+    if not items:
+        raise ValueError("Vertical stack requires at least one item")
+    if gap < 0:
+        raise ValueError("Vertical stack gap must be >= 0")
+    components = tuple(_ensure_component(item) for item in items)
+    return VerticalStackNode(items=components, gap=gap)
+
+
+def hstack(*items: Any, gap: int = 0) -> HorizontalStackNode:
+    if not items:
+        raise ValueError("Horizontal stack requires at least one item")
+    if gap < 0:
+        raise ValueError("Horizontal stack gap must be >= 0")
+    components = tuple(_ensure_component(item) for item in items)
+    return HorizontalStackNode(items=components, gap=gap)
+
+
+def workbook(name: str) -> WorkbookBuilder:
+    return WorkbookBuilder(name)

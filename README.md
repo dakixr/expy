@@ -1,93 +1,91 @@
-# expy — Excel in Python (MVP)
- 
-**Goal:** Compose spreadsheets with pure Python—no cell coordinates. You assemble rows/columns/cells; expy handles layout. Everything is type-hinted, data-only (no formulas), and fully stylable with Tailwind-like utilities or themes.
- 
+# expy — Excel in Python
+
+Compose polished spreadsheets with pure Python—no manual coordinates. You assemble rows/columns/cells; expy handles layout, rendering, and styling with utility-style classes.
+
 ## Core ideas
- 
-* **Positionless composition:** You never place `A1`, `B2`, etc. Components flow in order.
-* **Small primitives:** `row`, `col`, `cell` are the building blocks.
-* **Reusable components:** Start with `table`; more to come.
-* **Styling-first:** Utility styles (Tailwind-ish) + global theme. Every primitive takes `style=[...]`.
-* **Flexible layouts:** Vertical / Horizontal stacking of components.
- 
-## Primitives
- 
+
+- **Positionless composition:** Build sheets declaratively from `row`, `col`, `cell`, `table`, `vstack`, and `hstack`.
+- **Composable styling:** Tailwind-inspired utilities (typography, colors, alignment, number formats) applied via `style=[...]`.
+- **Deterministic rendering:** Pure-data trees compiled into `.xlsx` files with predictable output—ideal for tests and CI diffing.
+
+## Getting started
+
 ```python
 import expy as ex
- 
- 
+
 report = (
     ex.workbook("Sales")[
         ex.sheet("Summary")[
-            ex.row(style=[ex.text_xl, ex.bold])["Q3 Sales Overview"],
-            ex.row()[
-                ex.cell(style=[ex.muted])["Region"],
-                ex.cell(style=[ex.muted])["Units"],
-                ex.cell(style=[ex.muted])["Price"],
-            ],
-            ex.row(style=[ex.bg_emphasis, ex.text_white])[ "EMEA", 1200, 19.0 ],
-            ex.row()[ "APAC",  900, 21.0 ],
-            ex.row()[ "AMER", 1500, 18.5 ],
+            ex.row(style=[ex.text_2xl, ex.bold, ex.text_blue])["Q3 Sales Overview"],
+            ex.row(style=[ex.text_sm, ex.text_gray])["Region", "Units", "Price"],
+            ex.row(style=[ex.bg_primary, ex.text_white, ex.bold])["EMEA", 1200, 19.0],
+            ex.row()["APAC", 900, 21.0],
+            ex.row()["AMER", 1500, 18.5],
         ]
     ]
 )
- 
+
 report.save("report.xlsx")
 ```
- 
-### `row`, `col`, `cell`
- 
+
+## Primitives
+
 ```python
-e.row(style=[ex.bold, ex.bg_red])[ 1, 2, 3, 4, 5 ]
-e.col(style=[ex.italic])[ "a", "b", "c" ]
-e.cell(style=[ex.bold, ex.bg_red])[ "hello, world!" ]
+ex.row(style=[ex.bold, ex.bg_warning])[1, 2, 3, 4, 5]
+ex.col(style=[ex.italic])["a", "b", "c"]
+ex.cell(style=[ex.text_green, ex.number_precision])[42100]
 ```
- 
-* `row[...]` accepts a sequence (mixed types ok).
-* `col[...]` stacks values vertically.
-* `cell[...]` wraps a single value.
-* All accept `style=[...]`.
- 
+
+- `row[...]` accepts any sequence (numbers, strings, dataclasses…)
+- `col[...]` stacks values vertically
+- `cell[...]` wraps a single scalar
+- All primitives accept `style=[...]`
+
 ## Component: `table`
- 
-TBD
- 
-## Styling
- 
-### Utility styles (Tailwind-like)
- 
+
+`ex.table(...)` renders a header + body with optional style overrides. Combine with `vstack`/`hstack` for dashboards and reports.
+
 ```python
-e.row(style=[ex.text_sm, ex.text_slate_600, ex.bg_slate_50, ex.px_2, ex.py_1])[ ... ]
-e.cell(style=[ex.text_right, ex.mono])[ 42100 ]
-```
- 
-**Example utilities** (non-exhaustive):
- 
-* Typography: `text_xs/_sm/_base/_lg/_xl`, `bold`, `italic`, `mono`
-* Color: `text_slate_600`, `bg_emphasis`, `bg_red`, `text_white`
-* Layout: `px_2`, `py_1`, `align_middle`, `text_right`
-* Table: `table_bordered`, `table_banded`, `table_compact`
- 
-### Themes (sane defaults)
- 
-```python
-corp = ex.theme(
-    font="Inter",
-    base_size=11,
-    colors={"primary": "#0D6EFD", "muted": "#6C757D"},
-    table=ex.table_theme(banded=True, header_bg="#F2F4F7")
-)
- 
-e.workbook("Styled", theme=corp)[
-    e.sheet("Overview")[ e.table(header=[...])[ ... ] ]
+sales_table = ex.table(
+    header=["Region", "Units", "Price"],
+    header_style=[ex.text_sm, ex.text_gray, ex.align_middle],
+    style=[ex.table_bordered, ex.table_compact],
+)[
+    ["EMEA", 1200, 19.0],
+    ["APAC", 900, 21.0],
+    ["AMER", 1500, 18.5],
 ]
+
+layout = ex.vstack(
+    ex.row(style=[ex.text_xl, ex.bold])["Q3 Sales Overview"],
+    ex.space(),
+    ex.hstack(
+        sales_table,
+        ex.cell(style=[ex.text_sm, ex.text_gray])["Generated with expy"],
+        gap=2,
+    ),
+)
 ```
- 
-* A theme sets defaults; local `style=[...]` always winex.
-* Swap themes to reskin without changing data/layout code.
- 
+
+## Utility styles (non-exhaustive)
+
+- **Typography:** `text_xs/_sm/_base/_lg/_xl/_2xl/_3xl`, `bold`, `italic`, `mono`
+- **Text colors:** `text_red`, `text_green`, `text_blue`, `text_orange`, `text_purple`, `text_black`, `text_gray`
+- **Backgrounds:** `bg_red`, `bg_primary`, `bg_muted`, `bg_success`, `bg_warning`, `bg_info`
+- **Layout & alignment:** `text_left`, `text_center`, `text_right`, `align_top/middle/bottom`, `wrap`
+- **Tables:** `table_bordered`, `table_banded`, `table_compact`
+- **Number/date formats:** `number_comma`, `number_precision`, `percent`, `currency_usd`, `currency_eur`, `date_short`, `datetime_short`, `time_short`
+
+Mix and match utilities freely—what you see is what you get.
+
+## Layout helpers
+
+- `vstack(a, b, c, gap=1)` vertically stacks components with optional blank rows between them.
+- `hstack(a, b, gap=1)` arranges components side by side with configurable column gaps.
+- `space(rows=1, height=None)` inserts empty rows (optionally with a fixed height).
+
 ## Types & ergonomics
- 
-* Modern Python with type hints on all public APIex.
-* Pure Python stack traces; easy to debug and test.
-* Deterministic rendering for stable diffs in CI.
+
+- Modern Python with full type hints.
+- Pure Python stack traces; easy to debug, script, and test.
+- Deterministic rendering for stable diffs in CI.
