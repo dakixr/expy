@@ -21,7 +21,7 @@ pip install xpyxl
 import xpyxl as x
 
 report = (
-    x.workbook("Sales")[
+    x.workbook()[
         x.sheet("Summary")[
             x.row(style=[x.text_2xl, x.bold, x.text_blue])["Q3 Sales Overview"],
             x.row(style=[x.text_sm, x.text_gray])["Region", "Units", "Price"],
